@@ -144,6 +144,9 @@ export async function setupWebSocket(io: Server) {
               game.players.forEach((uuid) => {
                 io.to(uuid).emit(socketMessages.GameEnded, {
                   gameScore: endedGame.score,
+                  playersLogins: game.players.map(
+                    (u) => GameManagerService.getInstance().getPlayerByUuid(u)?.login
+                  ),
                 });
               });
             } else {

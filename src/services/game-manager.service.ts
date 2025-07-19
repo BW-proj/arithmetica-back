@@ -121,6 +121,15 @@ export class GameManagerService {
     }
   }
 
+  public addProblemToGame(gameUuid: string, problem: Problem): void {
+    const game = this.getGameByUuid(gameUuid);
+    if (game) {
+      game.problems.push(problem);
+    } else {
+      logger.error(`Game with UUID ${gameUuid} not found`);
+    }
+  }
+
   public getConnectedPlayers(): Player[] {
     return this.connectedPlayers;
   }

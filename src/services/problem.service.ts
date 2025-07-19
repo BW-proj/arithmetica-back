@@ -26,7 +26,8 @@ export class ProblemService {
       difficulty: 1,
       solution: 4,
     };
-    
+
+    GameManagerService.getInstance().addProblemToGame(gameUuid, problem);
 
     return problem;
   }
