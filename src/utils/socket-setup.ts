@@ -39,6 +39,20 @@ let ioServer: Server | null = null;
  *
  */
 
+const socketMessages = {
+  PlayerConnected: "PlayerConnected",
+  PlayerDisconnected: "PlayerDisconnected",
+  PlayerUpdated: "PlayerUpdated",
+  PlayerAnswered: "PlayerAnswered",
+  GameCreated: "GameCreated",
+  GameEnded: "GameEnded",
+  GameUpdated: "GameUpdated",
+  PlayerSearchGame: "PlayerSearchGame",
+  PlayerAnswer: "PlayerAnswer",
+  GameStart: "GameStart",
+  PlayerAnswerResult: "PlayerAnswerResult",
+};
+
 export async function setupWebSocket(io: Server) {
   if (!io) {
     logger.error("Socket.io server instance is not provided");
@@ -59,13 +73,16 @@ export async function setupWebSocket(io: Server) {
       socket.handshake.query.login as string
     );
 
-    socket.emit("PlayerConnected", { success: true, player: player });
+    socket.emit(socketMessages.PlayerConnected, {
+      success: true,
+      player: player,
+    });
 
-    socket.on("PlayerSearchGame", async (data) => {
+    socket.on(socketMessages.PlayerSearchGame, async (data) => {
       const playerUuid = data.uuid;
 
       if (!playerUuid) {
-        logger.error("PlayerSearchGame event received without UUID");
+        logger.error(`${socketMessages.PlayerSearchGame} event received without UUID`);
         return;
       }
 
@@ -79,9 +96,9 @@ export async function setupWebSocket(io: Server) {
       } else if (game === true) {
         const player =
           GameManagerService.getInstance().getPlayerByUuid(playerUuid);
-        socket.emit("PlayerUpdated", { player });
+        socket.emit(socketMessages.PlayerUpdated, { player });
       } else {
-        socket.emit("GameCreated", {
+        socket.emit(socketMessages.GameCreated, {
           playersLogins: game.players.map((uuid) =>
             GameManagerService.getInstance().getPlayerByUuid(uuid)
           ),
@@ -92,6 +109,12 @@ export async function setupWebSocket(io: Server) {
           gameUuid: game.uuid,
         });
       }
+    });
+
+    io.on("disconnect", () => {
+      logger.info(`Client disconnected: ${socket.id}`);
+      GameManagerService.getInstance().unregisterPlayer(player.uuid);
+      socket.emit(socketMessages.PlayerDisconnected, { success: true });
     });
   });
 }
