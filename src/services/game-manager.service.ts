@@ -117,6 +117,16 @@ export class GameManagerService {
     }
   }
 
+  public incrementPlayerScore(playerUuid: string): void {
+    const player = this.getPlayerByUuid(playerUuid);
+    if (player) {
+      player.currentScore += 1;
+      this.updateUser(playerUuid, { currentScore: player.currentScore });
+    } else {
+      logger.error(`Player with UUID ${playerUuid} not found`);
+    }
+  }
+
   public addProblemToGame(gameUuid: string, problem: Problem): void {
     const game = this.getGameByUuid(gameUuid);
     if (game) {

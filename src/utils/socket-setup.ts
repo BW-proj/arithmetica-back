@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import { logger } from "../loggers/logger";
 import { GameManagerService } from "../services/game-manager.service";
 import { ProblemService } from "../services/problem.service";
+import { PlayerConnectedDto } from "../dto/ws/player-connected.dto";
 
 let ioServer: Server | null = null;
 
@@ -78,10 +79,16 @@ export async function setupWebSocket(io: Server) {
     playerSockets.set(player.uuid, socket.id);
     socket.join(player.uuid);
 
-    socket.emit(socketMessages.PlayerConnected, {
+    const playerConnectedDto: PlayerConnectedDto = {
       success: true,
-      player: player,
-    });
+      player: {
+        uuid: player.uuid,
+        login: player.login,
+        elo: player.elo,
+        status: player.status,
+      },
+    };
+    socket.emit(socketMessages.PlayerConnected, playerConnectedDto);
 
     socket.on(socketMessages.PlayerSearchGame, async (data) => {
       const playerUuid = data.uuid;
@@ -152,9 +159,13 @@ export async function setupWebSocket(io: Server) {
             }
             if (endedGame) {
               io.to(game.players[0]).emit(socketMessages.GameEnded, {
-                gameScore: {
-                  player1Score: playerA.currentScore,
-                  player2Score: playerB.currentScore,
+                0: {
+                  login: playerA.login,
+                  elo: playerA.elo,
+                },
+                1: {
+                  login: playerB.login,
+                  elo: playerB.elo,
                 },
               });
             } else {
@@ -191,6 +202,8 @@ export async function setupWebSocket(io: Server) {
           answer
         )
       ) {
+        GameManagerService.getInstance().incrementPlayerScore(playerUuid);
+
         const nextProblem =
           ProblemService.getInstance().getOrCreateProblemForGame(game.uuid);
         if (nextProblem) {
