@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import { logger } from "../loggers/logger";
 import { GameManagerService } from "../services/game-manager.service";
+import { ProblemService } from "../services/problem.service";
 
 let ioServer: Server | null = null;
 
@@ -24,9 +25,9 @@ let ioServer: Server | null = null;
  * - GameEnded // {gameScore: GameScore}
  *
  * Client emits:
- * - connection // {login: string}
+ * - connection // {login: string} : OK
  * - PlayerAnswer // {uuid: string, answer: number}
- * - PlayerSearchGame // {uuid: string}
+ * - PlayerSearchGame // {uuid: string} : OK
  *
  *
  *
@@ -53,6 +54,8 @@ const socketMessages = {
   PlayerAnswerResult: "PlayerAnswerResult",
 };
 
+const playerSockets: Map<string, string> = new Map();
+
 export async function setupWebSocket(io: Server) {
   if (!io) {
     logger.error("Socket.io server instance is not provided");
@@ -72,6 +75,8 @@ export async function setupWebSocket(io: Server) {
     const player = GameManagerService.getInstance().registerPlayer(
       socket.handshake.query.login as string
     );
+    playerSockets.set(player.uuid, socket.id);
+    socket.join(player.uuid);
 
     socket.emit(socketMessages.PlayerConnected, {
       success: true,
@@ -82,7 +87,9 @@ export async function setupWebSocket(io: Server) {
       const playerUuid = data.uuid;
 
       if (!playerUuid) {
-        logger.error(`${socketMessages.PlayerSearchGame} event received without UUID`);
+        logger.error(
+          `${socketMessages.PlayerSearchGame} event received without UUID`
+        );
         return;
       }
 
@@ -98,23 +105,61 @@ export async function setupWebSocket(io: Server) {
           GameManagerService.getInstance().getPlayerByUuid(playerUuid);
         socket.emit(socketMessages.PlayerUpdated, { player });
       } else {
-        socket.emit(socketMessages.GameCreated, {
-          playersLogins: game.players.map((uuid) =>
-            GameManagerService.getInstance().getPlayerByUuid(uuid)
-          ),
-          playersElo: game.players.map(
-            (uuid) =>
-              GameManagerService.getInstance().getPlayerByUuid(uuid)?.elo
-          ),
-          gameUuid: game.uuid,
+        game.players.forEach((uuid) => {
+          io.to(uuid).emit(socketMessages.GameCreated, {
+            playersLogins: game.players.map(
+              (u) => GameManagerService.getInstance().getPlayerByUuid(u)?.login
+            ),
+            playersElo: game.players.map(
+              (u) => GameManagerService.getInstance().getPlayerByUuid(u)?.elo
+            ),
+            gameUuid: game.uuid,
+          });
         });
+
+        setTimeout(() => {
+          const problem = ProblemService.getInstance().createProblemForGame(
+            game.uuid
+          );
+
+          if (problem) {
+            game.players.forEach((uuid) => {
+              io.to(uuid).emit(socketMessages.GameStart, {
+                problem: {
+                  uuid: problem.uuid,
+                  title: problem.title,
+                  difficulty: problem.difficulty,
+                  description: problem.description,
+                },
+                startedAt: new Date(),
+              });
+            });
+          }
+
+          setTimeout(() => {
+            const endedGame = GameManagerService.getInstance().endGame(
+              game.uuid
+            );
+            if (endedGame) {
+              game.players.forEach((uuid) => {
+                io.to(uuid).emit(socketMessages.GameEnded, {
+                  gameScore: endedGame.score,
+                });
+              });
+            } else {
+              logger.error(`Failed to end game ${game.uuid}`);
+            }
+          }, 60 * 1000);
+        }, 5 * 1000);
       }
     });
 
+    socket.on(socketMessages.PlayerAnswer, async (data) => {});
+
     io.on("disconnect", () => {
-      logger.info(`Client disconnected: ${socket.id}`);
       GameManagerService.getInstance().unregisterPlayer(player.uuid);
-      socket.emit(socketMessages.PlayerDisconnected, { success: true });
+      playerSockets.delete(player.uuid);
+      socket.leave(player.uuid);
     });
   });
 }

@@ -2,25 +2,25 @@ import crypto from "crypto";
 import { EloHelperService } from "./elo-helper.service";
 import { logger } from "../loggers/logger";
 
-enum PlayerStatus {
+export enum PlayerStatus {
   SEARCHING = "searching",
   PLAYING = "playing",
   CONNECTED = "connected",
 }
 
-interface Player {
+export interface Player {
   uuid: string;
   login: string;
   elo: number;
   status: PlayerStatus;
 }
 
-interface GameScore {
+export interface GameScore {
   player1Score: number;
   player2Score: number;
 }
 
-interface Problem {
+export interface Problem {
   uuid: string; // Problem UUID
   title: string; // Problem title
   description: string; // Problem description
@@ -32,8 +32,8 @@ export interface Game {
   uuid: string; // Game UUID
   players: string[]; // Player UUIDs
   score: GameScore;
-  startedAt?: Date;
-  currentProblem?: Problem; // Current problem in the game
+  startedAt: Date;
+  problems: Problem[];
 }
 
 export class GameManagerService {
@@ -133,6 +133,8 @@ export class GameManagerService {
         player1Score: 0,
         player2Score: 0,
       },
+      startedAt: new Date(),
+      problems: [],
     };
     this.runningGames.push(game);
     return game;
@@ -182,5 +184,8 @@ export class GameManagerService {
     return (
       this.connectedPlayers.find((player) => player.uuid === playerUuid) || null
     );
+  }
+  getGameByUuid(gameUuid: string): Game | null {
+    return this.runningGames.find((game) => game.uuid === gameUuid) || null;
   }
 }

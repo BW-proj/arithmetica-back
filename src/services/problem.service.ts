@@ -1,0 +1,33 @@
+import { GameManagerService, Problem } from "./game-manager.service";
+import crypto from "crypto";
+
+export class ProblemService {
+  private static instance: ProblemService;
+
+  private constructor() {}
+
+  public static getInstance(): ProblemService {
+    if (!ProblemService.instance) {
+      ProblemService.instance = new ProblemService();
+    }
+    return ProblemService.instance;
+  }
+
+  public createProblemForGame(gameUuid: string): Problem | null {
+    const game = GameManagerService.getInstance().getGameByUuid(gameUuid);
+    if (!game) {
+      return null;
+    }
+
+    let problem: Problem = {
+      uuid: crypto.randomUUID(),
+      title: "Sample Problem",
+      description: "2 + 2",
+      difficulty: 1,
+      solution: 4,
+    };
+    
+
+    return problem;
+  }
+}
