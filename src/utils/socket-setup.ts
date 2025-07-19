@@ -162,10 +162,12 @@ export async function setupWebSocket(io: Server) {
                 0: {
                   login: playerA.login,
                   elo: playerA.elo,
+                  score: playerA.currentScore,
                 },
                 1: {
                   login: playerB.login,
                   elo: playerB.elo,
+                  score: playerB.currentScore,
                 },
               });
             } else {
@@ -215,6 +217,12 @@ export async function setupWebSocket(io: Server) {
               difficulty: nextProblem.difficulty,
               description: nextProblem.description,
             },
+          });
+          game.players.forEach((uuid) => {
+            io.to(uuid).emit(socketMessages.GameUpdated, {
+              playerUuid,
+              score: {},
+            });
           });
         } else {
           logger.error(`No next problem found for game ${game?.uuid}`);
