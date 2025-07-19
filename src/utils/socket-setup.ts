@@ -140,24 +140,79 @@ export async function setupWebSocket(io: Server) {
             const endedGame = GameManagerService.getInstance().endGame(
               game.uuid
             );
+            const playerA = GameManagerService.getInstance().getPlayerByUuid(
+              game.players[0]
+            );
+            const playerB = GameManagerService.getInstance().getPlayerByUuid(
+              game.players[1]
+            );
+            if (!endedGame || !playerA || !playerB) {
+              logger.error(`Failed to end game ${game.uuid}`);
+              return;
+            }
             if (endedGame) {
-              game.players.forEach((uuid) => {
-                io.to(uuid).emit(socketMessages.GameEnded, {
-                  gameScore: endedGame.score,
-                  playersLogins: game.players.map(
-                    (u) => GameManagerService.getInstance().getPlayerByUuid(u)?.login
-                  ),
-                });
+              io.to(game.players[0]).emit(socketMessages.GameEnded, {
+                gameScore: {
+                  player1Score: playerA.currentScore,
+                  player2Score: playerB.currentScore,
+                },
               });
             } else {
               logger.error(`Failed to end game ${game.uuid}`);
             }
-          }, 60 * 1000);
-        }, 5 * 1000);
+          }, 60 * 1000); // Timeout for game end after 60 seconds
+        }, 5 * 1000); // Timeout for game start after 5 seconds
       }
     });
 
-    socket.on(socketMessages.PlayerAnswer, async (data) => {});
+    socket.on(socketMessages.PlayerAnswer, async (data) => {
+      const playerUuid = data.uuid;
+      const game =
+        GameManagerService.getInstance().getUserCurrentGame(playerUuid);
+      const answer = data.answer;
+
+      if (!game) {
+        logger.error(`Player ${playerUuid} is not in a game`);
+        return;
+      }
+
+      if (!playerUuid || answer === undefined) {
+        logger.error(
+          `${socketMessages.PlayerAnswer} event received without UUID or answer`
+        );
+        return;
+      }
+
+      logger.info(`Player ${playerUuid} answered with ${answer}`);
+      if (
+        GameManagerService.getInstance().validateAnswer(
+          playerUuid,
+          game.uuid,
+          answer
+        )
+      ) {
+        const nextProblem =
+          ProblemService.getInstance().getOrCreateProblemForGame(game.uuid);
+        if (nextProblem) {
+          io.to(playerUuid).emit(socketMessages.PlayerAnswerResult, {
+            success: true,
+            nextProblem: {
+              uuid: nextProblem.uuid,
+              title: nextProblem.title,
+              difficulty: nextProblem.difficulty,
+              description: nextProblem.description,
+            },
+          });
+        } else {
+          logger.error(`No next problem found for game ${game?.uuid}`);
+        }
+      } else {
+        logger.info(`Player ${playerUuid} answered incorrectly`);
+        io.to(playerUuid).emit(socketMessages.PlayerAnswerResult, {
+          success: false,
+        });
+      }
+    });
 
     io.on("disconnect", () => {
       GameManagerService.getInstance().unregisterPlayer(player.uuid);

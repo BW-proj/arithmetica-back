@@ -4,6 +4,7 @@ import { logger } from "../loggers/logger";
 
 export enum PlayerStatus {
   SEARCHING = "searching",
+  WAITING = "waiting",
   PLAYING = "playing",
   CONNECTED = "connected",
 }
@@ -13,13 +14,8 @@ export interface Player {
   login: string;
   elo: number;
   status: PlayerStatus;
+  currentScore: number;
 }
-
-export interface GameScore {
-  player1Score: number;
-  player2Score: number;
-}
-
 export interface Problem {
   uuid: string; // Problem UUID
   title: string; // Problem title
@@ -31,7 +27,6 @@ export interface Problem {
 export interface Game {
   uuid: string; // Game UUID
   players: string[]; // Player UUIDs
-  score: GameScore;
   startedAt: Date;
   problems: Problem[];
 }
@@ -54,6 +49,7 @@ export class GameManagerService {
     const player: Player = {
       uuid: crypto.randomUUID(),
       login,
+      currentScore: 0,
       elo: 1000,
       status: PlayerStatus.CONNECTED,
     };
@@ -135,13 +131,17 @@ export class GameManagerService {
   }
 
   public createGame(playerAUuid: string, playerBUuid: string): Game {
+    this.updateUser(playerAUuid, {
+      status: PlayerStatus.WAITING,
+      currentScore: 0,
+    });
+    this.updateUser(playerBUuid, {
+      status: PlayerStatus.WAITING,
+      currentScore: 0,
+    });
     const game: Game = {
       uuid: crypto.randomUUID(),
       players: [playerAUuid, playerBUuid],
-      score: {
-        player1Score: 0,
-        player2Score: 0,
-      },
       startedAt: new Date(),
       problems: [],
     };
@@ -163,11 +163,19 @@ export class GameManagerService {
     // Remove the game from running games
     this.runningGames.splice(gameIndex, 1);
 
+    const playerA = this.getPlayerByUuid(finishedGame.players[0]);
+    const playerB = this.getPlayerByUuid(finishedGame.players[1]);
+
+    if (!playerA || !playerB) {
+      logger.error(`Players not found for game ${gameUuid}`);
+      return null;
+    }
+
     // Update the players' elo based on the game score
     const { playerARating, playerBRating } = EloHelperService.calculateElo(
-      finishedGame.score.player1Score,
-      finishedGame.score.player2Score,
-      finishedGame.score.player1Score > finishedGame.score.player2Score
+      playerA.currentScore,
+      playerB.currentScore,
+      playerA.currentScore > playerB.currentScore
     );
 
     this.updateUser(finishedGame.players[0], {
@@ -180,6 +188,32 @@ export class GameManagerService {
     });
 
     return finishedGame;
+  }
+
+  validateAnswer(
+    playerUuid: string,
+    gameUuid: string,
+    answer: number
+  ): boolean {
+    const game = this.getGameByUuid(gameUuid);
+    if (!game) {
+      logger.error(`Game with UUID ${gameUuid} not found`);
+      return false;
+    }
+    const player = this.getPlayerByUuid(playerUuid);
+    if (!player) {
+      logger.error(`Player with UUID ${playerUuid} not found`);
+      return false;
+    }
+    const solution = game.problems[player.currentScore].solution;
+    if (!solution) {
+      logger.error(
+        `No problem found for player ${playerUuid} in game ${gameUuid}`
+      );
+      return false;
+    }
+
+    return solution === answer;
   }
 
   public getUserCurrentGame(playerUuid: string): Game | null {
