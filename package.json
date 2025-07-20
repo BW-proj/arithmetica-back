@@ -1,5 +1,5 @@
 {
-  "name": "express-rdy-basics",
+  "name": "arithmetica-back",
   "version": "1.0.0",
   "description": "A very basic express server template.",
   "main": "index.js",
