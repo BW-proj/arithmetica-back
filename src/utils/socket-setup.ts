@@ -90,6 +90,9 @@ export async function setupWebSocket(io: Server) {
     };
     socket.emit(socketMessages.PlayerConnected, playerConnectedDto);
 
+    /**
+     * On player search for a game
+     */
     socket.on(socketMessages.PlayerSearchGame, async (data) => {
       const playerUuid = data.uuid;
 
@@ -158,17 +161,19 @@ export async function setupWebSocket(io: Server) {
               return;
             }
             if (endedGame) {
-              io.to(game.players[0]).emit(socketMessages.GameEnded, {
-                0: {
-                  login: playerA.login,
-                  elo: playerA.elo,
-                  score: playerA.currentScore,
-                },
-                1: {
-                  login: playerB.login,
-                  elo: playerB.elo,
-                  score: playerB.currentScore,
-                },
+              game.players.forEach((uuid) => {
+                io.to(uuid).emit(socketMessages.GameEnded, {
+                  0: {
+                    login: playerA.login,
+                    elo: playerA.elo,
+                    score: playerA.currentScore,
+                  },
+                  1: {
+                    login: playerB.login,
+                    elo: playerB.elo,
+                    score: playerB.currentScore,
+                  },
+                });
               });
             } else {
               logger.error(`Failed to end game ${game.uuid}`);
@@ -220,8 +225,16 @@ export async function setupWebSocket(io: Server) {
           });
           game.players.forEach((uuid) => {
             io.to(uuid).emit(socketMessages.GameUpdated, {
-              playerUuid,
-              score: {},
+              score: {
+                [game.players[0]]:
+                  GameManagerService.getInstance().getPlayerByUuid(
+                    game.players[0]
+                  )?.currentScore || 0,
+                [game.players[1]]:
+                  GameManagerService.getInstance().getPlayerByUuid(
+                    game.players[1]
+                  )?.currentScore || 0,
+              },
             });
           });
         } else {
