@@ -29,6 +29,7 @@ export interface Game {
   players: string[]; // Player UUIDs
   startedAt: Date;
   problems: Problem[];
+  difficulty?: number; // Optional difficulty for the game
 }
 
 export class GameManagerService {
@@ -52,6 +53,7 @@ export class GameManagerService {
       currentScore: 0,
       elo: 1000,
       status: PlayerStatus.CONNECTED,
+      // difficulty: 1, -> Compute difficulty based on elo or other factors
     };
     logger.info(`Registering player: ${login} with UUID: ${player.uuid}`);
     this.connectedPlayers.push(player);
@@ -84,8 +86,8 @@ export class GameManagerService {
 
     const matchedPlayer = this.matchmakePlayer(playerUuid);
     if (matchedPlayer) {
-      this.updateUser(playerUuid, { status: PlayerStatus.PLAYING });
-      this.updateUser(matchedPlayer.uuid, { status: PlayerStatus.PLAYING });
+      this.updateUser(playerUuid, { status: PlayerStatus.WAITING });
+      this.updateUser(matchedPlayer.uuid, { status: PlayerStatus.WAITING });
 
       const game = this.createGame(player.uuid, matchedPlayer.uuid);
       return game;
@@ -160,14 +162,6 @@ export class GameManagerService {
   }
 
   public createGame(playerAUuid: string, playerBUuid: string): Game {
-    this.updateUser(playerAUuid, {
-      status: PlayerStatus.WAITING,
-      currentScore: 0,
-    });
-    this.updateUser(playerBUuid, {
-      status: PlayerStatus.WAITING,
-      currentScore: 0,
-    });
     const game: Game = {
       uuid: crypto.randomUUID(),
       players: [playerAUuid, playerBUuid],
