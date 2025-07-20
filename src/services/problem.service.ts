@@ -19,8 +19,12 @@ export class ProblemService {
     if (!game) {
       return null;
     }
-    const player1 = GameManagerService.getInstance().getPlayerByUuid(game.players[0]);
-    const player2 = GameManagerService.getInstance().getPlayerByUuid(game.players[1]);
+    const player1 = GameManagerService.getInstance().getPlayerByUuid(
+      game.players[0]
+    );
+    const player2 = GameManagerService.getInstance().getPlayerByUuid(
+      game.players[1]
+    );
 
     if (!player1 || !player2) {
       return null;
@@ -39,16 +43,27 @@ export class ProblemService {
       return null;
     }
 
-    let problem: Problem = {
-      uuid: crypto.randomUUID(),
-      title: "Sample Problem",
-      description: "2 + 2",
-      difficulty: 1,
-      solution: 4,
-    };
+    let problem: Problem = this.generateMultiplicationProblem(1, 50);
 
     GameManagerService.getInstance().addProblemToGame(gameUuid, problem);
 
     return problem;
+  }
+
+  public generateMultiplicationProblem(
+    difficulty: number,
+    maxNumber: number = 10
+  ): Problem {
+    const num1 = Math.floor(Math.random() * maxNumber) + 1;
+    const num2 = Math.floor(Math.random() * maxNumber) + 1;
+    const solution = num1 * num2;
+
+    return {
+      uuid: crypto.randomUUID(),
+      title: `${num1} x ${num2}`,
+      description: `${num1} x ${num2}`,
+      difficulty: difficulty,
+      solution: solution,
+    };
   }
 }
