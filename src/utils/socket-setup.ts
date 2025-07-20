@@ -247,12 +247,10 @@ export async function setupWebSocket(io: Server) {
               score: {
                 0: {
                   login: playerA.login,
-                  elo: playerA.elo,
                   score: playerA.currentScore,
                 },
                 1: {
                   login: playerB.login,
-                  elo: playerB.elo,
                   score: playerB.currentScore,
                 },
               },
