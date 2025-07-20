@@ -58,10 +58,20 @@ export class GameManagerService {
     return player;
   }
 
-  public unregisterPlayer(playerUuid: string): void {
+  // Returns true if player was in game and was removed, false otherwise
+  public unregisterPlayer(playerUuid: string): Game | null {
+    const game = this.getUserCurrentGame(playerUuid) || null;
+    if (game) {
+      // Player was in a game
+      this.endGame(game.uuid);
+      return game;
+    }
+
     this.connectedPlayers = this.connectedPlayers.filter(
       (player) => player.uuid !== playerUuid
     );
+    logger.info(`Unregistered player with UUID: ${playerUuid}`);
+    return null;
   }
 
   public playerSearchGame(playerUuid: string): Game | boolean {
@@ -121,6 +131,15 @@ export class GameManagerService {
     const player = this.getPlayerByUuid(playerUuid);
     if (player) {
       player.currentScore += 1;
+      this.updateUser(playerUuid, { currentScore: player.currentScore });
+    } else {
+      logger.error(`Player with UUID ${playerUuid} not found`);
+    }
+  }
+  public decrementPlayerScore(playerUuid: string): void {
+    const player = this.getPlayerByUuid(playerUuid);
+    if (player) {
+      player.currentScore = Math.max(0, player.currentScore - 1);
       this.updateUser(playerUuid, { currentScore: player.currentScore });
     } else {
       logger.error(`Player with UUID ${playerUuid} not found`);

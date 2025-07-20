@@ -249,7 +249,57 @@ export async function setupWebSocket(io: Server) {
     });
 
     io.on("disconnect", () => {
-      GameManagerService.getInstance().unregisterPlayer(player.uuid);
+      const game = GameManagerService.getInstance().getUserCurrentGame(
+        player.uuid
+      );
+
+      if (!game) {
+        logger.info(`Player ${player.uuid} disconnected, not in a game`);
+        playerSockets.delete(player.uuid);
+        socket.leave(player.uuid);
+        return;
+      }
+
+      const playerA = GameManagerService.getInstance().getPlayerByUuid(
+        game.players[0]
+      );
+      const playerB = GameManagerService.getInstance().getPlayerByUuid(
+        game.players[1]
+      );
+      if (!playerA || !playerB) {
+        logger.error(`Failed to find players for game ${game.uuid}`);
+        return;
+      }
+      const endedGame = GameManagerService.getInstance().unregisterPlayer(
+        player.uuid
+      );
+      if (endedGame) {
+        // Player was in game
+
+        logger.info(`Player ${player.uuid} disconnected, stopping game`);
+        game.players.forEach((uuid) => {
+          io.to(uuid).emit(socketMessages.GameEnded, {
+            0: {
+              login: playerA.login,
+              elo:
+                GameManagerService.getInstance().getPlayerByUuid(playerA.uuid)
+                  ?.elo || 0,
+              score:
+                GameManagerService.getInstance().getPlayerByUuid(playerA.uuid)
+                  ?.currentScore || 0,
+            },
+            1: {
+              login: playerB.login,
+              elo:
+                GameManagerService.getInstance().getPlayerByUuid(playerB.uuid)
+                  ?.elo || 0,
+              score:
+                GameManagerService.getInstance().getPlayerByUuid(playerB.uuid)
+                  ?.currentScore || 0,
+            },
+          });
+        });
+      }
       playerSockets.delete(player.uuid);
       socket.leave(player.uuid);
     });
