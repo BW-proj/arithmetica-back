@@ -43,7 +43,7 @@ export class ProblemService {
       return null;
     }
 
-    let problem: Problem = this.generateMultiplicationProblem(1, 50);
+    let problem: Problem = this.generateMultiplicationProblem(1, 20);
 
     GameManagerService.getInstance().addProblemToGame(gameUuid, problem);
 
