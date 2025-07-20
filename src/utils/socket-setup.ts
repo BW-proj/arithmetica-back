@@ -223,17 +223,31 @@ export async function setupWebSocket(io: Server) {
               description: nextProblem.description,
             },
           });
+
+          const playerA = GameManagerService.getInstance().getPlayerByUuid(
+            game.players[0]
+          );
+          const playerB = GameManagerService.getInstance().getPlayerByUuid(
+            game.players[1]
+          );
+          if (!playerA || !playerB) {
+            logger.error(`Failed to find players for game ${game.uuid}`);
+            return;
+          }
+
           game.players.forEach((uuid) => {
             io.to(uuid).emit(socketMessages.GameUpdated, {
               score: {
-                [game.players[0]]:
-                  GameManagerService.getInstance().getPlayerByUuid(
-                    game.players[0]
-                  )?.currentScore || 0,
-                [game.players[1]]:
-                  GameManagerService.getInstance().getPlayerByUuid(
-                    game.players[1]
-                  )?.currentScore || 0,
+                0: {
+                  login: playerA.login,
+                  elo: playerA.elo,
+                  score: playerA.currentScore,
+                },
+                1: {
+                  login: playerB.login,
+                  elo: playerB.elo,
+                  score: playerB.currentScore,
+                },
               },
             });
           });
