@@ -24,11 +24,14 @@ let ioServer: Server | null = null;
  * - GameCreated // {playersLogins: string[2], playersElo: number[2], gameUuid: string}
  * - GameStart // {problem: Problem, startedAt: Date}
  * - GameEnded // {gameScore: GameScore}
+ * - Leaderboard // {players: [
+ * { login: string, elo: number, isInGame: boolean }]}
  *
  * Client emits:
  * - connection // {login: string} : OK
  * - PlayerAnswer // {uuid: string, answer: number}
  * - PlayerSearchGame // {uuid: string} : OK
+ * - Leaderboard // {}
  *
  *
  *
@@ -53,6 +56,7 @@ const socketMessages = {
   PlayerAnswer: "PlayerAnswer",
   GameStart: "GameStart",
   PlayerAnswerResult: "PlayerAnswerResult",
+  Leaderboard: "Leaderboard",
 };
 
 const playerSockets: Map<string, string> = new Map();
@@ -89,6 +93,11 @@ export async function setupWebSocket(io: Server) {
       },
     };
     socket.emit(socketMessages.PlayerConnected, playerConnectedDto);
+
+    socket.on(socketMessages.Leaderboard, () => {
+      const leaderboard = GameManagerService.getInstance().getLeaderboard();
+      socket.emit(socketMessages.Leaderboard, { leaderboard });
+    });
 
     /**
      * On player search for a game

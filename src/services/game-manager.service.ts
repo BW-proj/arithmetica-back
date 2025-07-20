@@ -63,6 +63,27 @@ export class GameManagerService {
     return player;
   }
 
+  getLeaderboard(size: number = 10): {
+    players: {
+      login: string;
+      elo: number;
+      isInGame: boolean;
+    }[];
+  } {
+    if (this.connectedPlayers.length === 0) {
+      return { players: [] };
+    }
+    const leaderboard = this.connectedPlayers.map((player) => ({
+      login: player.login,
+      elo: player.elo,
+      isInGame: this.getUserCurrentGame(player.uuid) !== null,
+    }));
+
+    // Sort by elo descending
+    leaderboard.sort((a, b) => b.elo - a.elo);
+    return { players: leaderboard.slice(0, size) };
+  }
+
   // Returns true if player was in game and was removed, false otherwise
   public unregisterPlayer(playerUuid: string): Game | null {
     const game = this.getUserCurrentGame(playerUuid) || null;
