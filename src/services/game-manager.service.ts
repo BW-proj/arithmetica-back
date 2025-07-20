@@ -2,6 +2,9 @@ import crypto from "crypto";
 import { EloHelperService } from "./elo-helper.service";
 import { logger } from "../loggers/logger";
 
+const MAX_ELO_DIFFERENCE = 100; // Maximum allowed Elo difference for matchmaking
+const BASE_ELO = 1000; // Base Elo rating for new players
+
 export enum PlayerStatus {
   SEARCHING = "searching",
   WAITING = "waiting",
@@ -51,7 +54,7 @@ export class GameManagerService {
       uuid: crypto.randomUUID(),
       login,
       currentScore: 0,
-      elo: 1000,
+      elo: BASE_ELO,
       status: PlayerStatus.CONNECTED,
       // difficulty: 1, -> Compute difficulty based on elo or other factors
     };
@@ -106,7 +109,10 @@ export class GameManagerService {
 
     // Find another player that is searching
     const otherPlayer = this.connectedPlayers.find(
-      (p) => p.status === PlayerStatus.SEARCHING && p.uuid !== playerUuid
+      (p) =>
+        p.status === PlayerStatus.SEARCHING &&
+        p.uuid !== playerUuid &&
+        Math.abs(p.elo - player.elo) < MAX_ELO_DIFFERENCE
     );
     return otherPlayer || null;
   }
@@ -196,9 +202,10 @@ export class GameManagerService {
 
     // Update the players' elo based on the game score
     const { playerARating, playerBRating } = EloHelperService.calculateElo(
-      playerA.currentScore,
-      playerB.currentScore,
-      playerA.currentScore > playerB.currentScore
+      playerA.elo,
+      playerB.elo,
+      playerA.currentScore > playerB.currentScore,
+      Math.abs(playerA.currentScore - playerB.currentScore)
     );
 
     this.updateUser(finishedGame.players[0], {

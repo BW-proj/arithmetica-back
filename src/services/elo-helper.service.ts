@@ -1,5 +1,6 @@
 export class EloHelperService {
   private static readonly K_FACTOR = 32;
+  private static readonly SCORE_DIFFERENCE_FACTOR = 0.1;
 
   // returns the new Elo rating after a game for playerA and playerB
   public static calculateElo(
@@ -24,8 +25,10 @@ export class EloHelperService {
       EloHelperService.K_FACTOR * (actualScoreB - expectedScoreB);
 
     // Adjust ratings based on score difference
-    const adjustedRatingA = newRatingA + scoreDifference * 0.1; // Example adjustment factor
-    const adjustedRatingB = newRatingB - scoreDifference * 0.1; // Example adjustment factor
+    const adjustedRatingA =
+      newRatingA + scoreDifference * EloHelperService.SCORE_DIFFERENCE_FACTOR;
+    const adjustedRatingB =
+      newRatingB - scoreDifference * EloHelperService.SCORE_DIFFERENCE_FACTOR;
 
     return {
       playerARating: Math.round(adjustedRatingA),
