@@ -131,7 +131,7 @@ export async function setupWebSocket(io: Server) {
               (u) => GameManagerService.getInstance().getPlayerByUuid(u)?.elo
             ),
             gameUuid: game.uuid,
-            startAt: new Date(),
+            startAt: new Date(Date.now() + 10 * 1000),
           });
         });
 
