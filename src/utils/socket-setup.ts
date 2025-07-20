@@ -59,8 +59,6 @@ const socketMessages = {
   Leaderboard: "Leaderboard",
 };
 
-const playerSockets: Map<string, string> = new Map();
-
 export async function setupWebSocket(io: Server) {
   if (!io) {
     logger.error("Socket.io server instance is not provided");
@@ -80,7 +78,7 @@ export async function setupWebSocket(io: Server) {
     const player = GameManagerService.getInstance().registerPlayer(
       socket.handshake.query.login as string
     );
-    playerSockets.set(player.uuid, socket.id);
+
     socket.join(player.uuid);
 
     const playerConnectedDto: PlayerConnectedDto = {
@@ -278,7 +276,7 @@ export async function setupWebSocket(io: Server) {
 
       if (!game) {
         logger.info(`Player ${player.uuid} disconnected, not in a game`);
-        playerSockets.delete(player.uuid);
+
         socket.leave(player.uuid);
         return;
       }
@@ -323,7 +321,6 @@ export async function setupWebSocket(io: Server) {
           });
         });
       }
-      playerSockets.delete(player.uuid);
       socket.leave(player.uuid);
     });
   });
